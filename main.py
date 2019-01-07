@@ -1,4 +1,4 @@
-import json, sys, tweepy
+import json, sys, tweepy, csv
 from bs4 import BeautifulSoup as bs
 import urllib2
 from tweepy.streaming import StreamListener
@@ -6,6 +6,7 @@ from IPython.display import clear_output
 from tweepy import OAuthHandler
 from tweepy import Stream
 import re
+import requests
 
 class appProperties:
     def __init__(self, consumerKey, consumerSecret, accessKey, accessSecret):
@@ -60,8 +61,19 @@ def main():
     # stream.filter(track=['Tesla'])
     #
     # stream.disconnect()
-    name_ticker = {'Tesla': 'TSLA', 'Microsoft': 'MSFT', 'Majesco': 'MJCO', 'Netflix': 'NFLX'}
+    name_ticker = {}
+    with open('ticker_list.csv') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for row in csv_reader:
+            if '.' not in row[0]:
+                name_ticker[row[2]] = row[0]
+
+    count = 0
+    #name_ticker = {'Tesla': 'TSLA', 'Microsoft': 'MSFT', 'Majesco': 'MJCO', 'Netflix': 'NFLX'}
     for key in name_ticker:
+        if count == 100:
+            exit()
+        count += 1
         print key
         twitterSentiment(api, key)
 
@@ -102,32 +114,37 @@ def twitterSentiment(api, key):
         tweet_text = []
         for tweet in tweets:
             tweet_text.append(re.sub(r'\W+', ' ', tweet.text.encode('utf-8').strip()))
+        if len(tweet_text) == 0:
+            continue
     # fp = open("./outputs/" + ticker + ".json")
     # for line in fp:
     #     text.append(re.sub(r'\W+', ' ', json.loads(line)['text'].encode('utf-8').strip()))
 
         for line in tweet_text:
             for word in line.split():
-                if word in pos_words:
+                if word.lower() in pos_words:
                     pos_count += 1
                     tot_words += 1
-                elif word in posLexicon:
+                elif word.lower() in posLexicon:
                     pos_words.append(word)
                     pos_count += 1
                     tot_words += 1
-                elif word in neg_words:
+                elif word.lower() in neg_words:
                     neg_count += 1
                     tot_words += 1
-                elif word in negLexicon:
+                elif word.lower() in negLexicon:
                     neg_words.append(word)
                     neg_count += 1
                     tot_words += 1
                 else:
                     continue
 
-    print "pos percentage: " + str(float(pos_count/float(tot_words)))
-    print "neg percentage: " + str(float(neg_count/float(tot_words)))
-
+    if tot_words > 0:
+        print "pos percentage: " + str(float(pos_count/float(tot_words)))
+        print "neg percentage: " + str(float(neg_count/float(tot_words)))
+    else:
+        print "pos percentage: 0.0"
+        print "neg percentage: 0.0"
 
 
 if __name__ == "__main__":
